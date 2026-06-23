@@ -1,69 +1,229 @@
+import { useEffect, useState } from 'react';
 import MainLayout from '../components/layout/MainLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
-import { BookOpen, Users, Activity } from 'lucide-react';
+import { Button } from '../components/ui/button';
+import { Badge } from '../components/ui/badge';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
+import { BookOpen, Users, Activity, Plus, Edit, Trash2 } from 'lucide-react';
+import { useCourseStore } from '../store/courseStore';
+import CreateCourseModal from '../components/modals/CreateCourseModal';
+import EditCourseModal from '../components/modals/EditCourseModal';
+import { toast } from 'sonner';
+import io from 'socket.io-client';
+
+const socket = io('http://localhost:3000');
 
 export default function LecturerDashboard() {
+  const { 
+    lecturerCourses, 
+    getLecturerCourses, 
+    deleteCourse,
+    isLoading 
+  } = useCourseStore();
+
+  const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [selectedCourse, setSelectedCourse] = useState<any>(null);
+  const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
+  const [liveStudents, setLiveStudents] = useState<any[]>([]);
+  const [allEnrolledStudents, setAllEnrolledStudents] = useState<any[]>([]);
+
+  // Fetch courses and enrolled students
+  useEffect(() => {
+    getLecturerCourses();
+    fetchEnrolledStudents();
+  }, [getLecturerCourses]);
+
+  const fetchEnrolledStudents = async () => {
+    try {
+      // This calls your backend endpoint for all students across lecturer's courses
+      const res = await fetch('/api/v1/course/mystudents'); // Adjust if needed
+      const data = await res.json();
+      setAllEnrolledStudents(data.data || data);
+    } catch (error) {
+      console.error("Failed to fetch enrolled students", error);
+    }
+  };
+
+  // WebSocket Real-time Presence
+  useEffect(() => {
+    socket.on('connect', () => console.log('Connected to Live Students'));
+
+    if (selectedCourseId) {
+      socket.emit('lecturer:join', selectedCourseId);
+    }
+
+    socket.on('presence:live_data', (students) => {
+      setLiveStudents(students);
+    });
+
+    return () => socket.off('presence:live_data');
+  }, [selectedCourseId]);
+
+  const handleSelectCourse = (courseId: string) => {
+    setSelectedCourseId(courseId);
+  };
+
+  const handleEditCourse = (course: any) => {
+    setSelectedCourse(course);
+    setEditModalOpen(true);
+  };
+
+  const handleDeleteCourse = async (id: string, title: string) => {
+    if (!confirm(`Delete "${title}"?`)) return;
+    try {
+      await deleteCourse(id);
+      toast.success("Course deleted successfully");
+    } catch (error) {
+      toast.error("Failed to delete course");
+    }
+  };
+
   return (
     <MainLayout>
       <div className="max-w-7xl mx-auto">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-            Lecturer Dashboard
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">
-            Overview of your teaching activities
-          </p>
+        <div className="flex justify-between items-center mb-8">
+          <div>
+            <h1 className="text-3xl font-bold">Lecturer Dashboard</h1>
+            <p className="text-gray-600 dark:text-gray-400">Real-time student monitoring</p>
+          </div>
+          <Button onClick={() => setCreateModalOpen(true)} className="bg-green-600 hover:bg-green-700">
+            <Plus className="mr-2 h-4 w-4" />
+            Create New Course
+          </Button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm flex items-center gap-2">
-                <BookOpen className="h-5 w-5 text-green-600" />
-                My Courses
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-4xl font-bold text-green-600">4</p>
-            </CardContent>
-          </Card>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          {/* Courses List */}
+          <div className="lg:col-span-7">
+            <Card>
+              <CardHeader>
+                <CardTitle>My Courses ({lecturerCourses.length})</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {lecturerCourses.length === 0 ? (
+                  <p className="text-center py-12 text-gray-500">No courses yet. Create one to begin.</p>
+                ) : (
+                  <div className="space-y-4">
+                    {lecturerCourses.map((course) => (
+                      <div 
+                        key={course.id}
+                        className={`p-6 border rounded-2xl cursor-pointer transition-all hover:border-green-300 ${selectedCourseId === course.id ? 'border-green-500 bg-green-50 dark:bg-green-950' : ''}`}
+                        onClick={() => handleSelectCourse(course.id)}
+                      >
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <h3 className="font-semibold text-xl">{course.title}</h3>
+                            <p className="text-green-600">{course.code} • Level {course.level}</p>
+                          </div>
+                          <Badge variant="outline">{course._count?.enrollments || 0} Students</Badge>
+                        </div>
+                        <p className="mt-3 text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
+                          {course.description}
+                        </p>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm flex items-center gap-2">
-                <Users className="h-5 w-5 text-green-600" />
-                Total Students
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-4xl font-bold">87</p>
-            </CardContent>
-          </Card>
+                        <div className="flex gap-3 mt-6">
+                          <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); handleEditCourse(course); }}>
+                            <Edit className="mr-2 h-4 w-4" /> Edit
+                          </Button>
+                          <Button variant="destructive" size="sm" onClick={(e) => { e.stopPropagation(); handleDeleteCourse(course.id, course.title); }}>
+                            <Trash2 className="mr-2 h-4 w-4" /> Delete
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm flex items-center gap-2">
-                <Activity className="h-5 w-5 text-green-600" />
-                Students Online
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-4xl font-bold">14</p>
-            </CardContent>
-          </Card>
+          {/* Live Students (Real-time) */}
+          <div className="lg:col-span-5">
+            <Card className="h-full">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Activity className="h-5 w-5 text-green-600" />
+                  Live Students
+                </CardTitle>
+                <p className="text-sm text-gray-500">
+                  {selectedCourseId ? "Currently active in selected course" : "Select a course to monitor"}
+                </p>
+              </CardHeader>
+              <CardContent>
+                {liveStudents.length === 0 ? (
+                  <p className="text-center py-20 text-gray-500">No students currently active</p>
+                ) : (
+                  <div className="space-y-4 max-h-[500px] overflow-y-auto">
+                    {liveStudents.map((student, i) => (
+                      <div key={i} className="flex items-center justify-between bg-gray-50 dark:bg-gray-800 p-4 rounded-xl">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center font-medium text-green-700">
+                            {student.name?.[0] || '?'}
+                          </div>
+                          <div>
+                            <p className="font-medium">{student.name}</p>
+                            <p className="text-xs text-gray-500">{student.email}</p>
+                          </div>
+                        </div>
+                        <div className="text-right text-sm">
+                          <p className="text-green-600 font-medium">{student.currentAction}</p>
+                          {student.materialTitle && <p className="text-gray-400 text-xs">{student.materialTitle}</p>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
         </div>
 
-        <Card>
+        {/* All Enrolled Students - Below */}
+        <Card className="mt-8">
           <CardHeader>
-            <CardTitle>Live Student Activity</CardTitle>
+            <CardTitle>All Enrolled Students ({allEnrolledStudents.length})</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-gray-500 py-16 text-center">
-              Real-time student monitoring will appear here
-            </p>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Student Name</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Course</TableHead>
+                  <TableHead>Enrolled On</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {allEnrolledStudents.map((enrollment, index) => (
+                  <TableRow key={index}>
+                    <TableCell className="font-medium">{enrollment.student.name}</TableCell>
+                    <TableCell>{enrollment.student.email}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline">{enrollment.course.code}</Badge>
+                    </TableCell>
+                    <TableCell>{new Date(enrollment.enrolledAt).toLocaleDateString()}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           </CardContent>
         </Card>
       </div>
+
+      {/* Modals */}
+      <CreateCourseModal
+        isOpen={createModalOpen}
+        onClose={() => setCreateModalOpen(false)}
+        onSuccess={getLecturerCourses}
+      />
+
+      <EditCourseModal
+        isOpen={editModalOpen}
+        onClose={() => setEditModalOpen(false)}
+        course={selectedCourse}
+        onSuccess={getLecturerCourses}
+      />
     </MainLayout>
   );
 }
