@@ -1,25 +1,59 @@
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
-import { Button } from '../components/ui/button';
-import { Input } from '../components/ui/input';
-import { Badge } from '../components/ui/badge';
-import { Avatar, AvatarFallback } from '../components/ui/avatar';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
-import { Plus, Search, Eye, Edit, Trash2 } from 'lucide-react';
-import { useState } from 'react';
-import MainLayout from '@/components/layout/MainLayout';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "../components/ui/card";
+import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
+import { Badge } from "../components/ui/badge";
+import { Avatar, AvatarFallback } from "../components/ui/avatar";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "../components/ui/table";
+import { Plus, Search, Eye, Edit, Trash2 } from "lucide-react";
+import { useState } from "react";
+import MainLayout from "@/components/layout/MainLayout";
+import CreateUserModal from "@/components/modals/createUserModal";
 
 export default function AdminDashboard() {
   const [searchTerm, setSearchTerm] = useState("");
+  const [studentModalOpen, setStudentModalOpen] = useState(false);
+  const [lecturerModalOpen, setLecturerModalOpen] = useState(false);
 
   const users = [
-    { id: "1", name: "Adrian", email: "contact@jsmastery.com", role: "LECTURER", createdAt: "Jan 12, 2026" },
-    { id: "2", name: "Jane Doe", email: "jane@gmail.com", role: "STUDENT", createdAt: "Jan 12, 2026" },
-    { id: "3", name: "John Admin", email: "admin@eduflow.com", role: "ADMIN", createdAt: "Jan 10, 2026" },
+    {
+      id: "1",
+      name: "Adrian",
+      email: "contact@jsmastery.com",
+      role: "LECTURER",
+      createdAt: "Jan 12, 2026",
+    },
+    {
+      id: "2",
+      name: "Jane Doe",
+      email: "jane@gmail.com",
+      role: "STUDENT",
+      createdAt: "Jan 12, 2026",
+    },
+    {
+      id: "3",
+      name: "John Admin",
+      email: "admin@eduflow.com",
+      role: "ADMIN",
+      createdAt: "Jan 10, 2026",
+    },
   ];
 
-  const filteredUsers = users.filter(user =>
-    user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.email.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredUsers = users.filter(
+    (user) =>
+      user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.email.toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
   return (
@@ -28,15 +62,24 @@ export default function AdminDashboard() {
         <div className="flex justify-between items-center mb-8">
           <div>
             <h1 className="text-3xl font-bold">Users</h1>
-            <p className="text-gray-600 dark:text-gray-400">Manage all platform users</p>
+            <p className="text-gray-600 dark:text-gray-400">
+              Manage all platform users
+            </p>
           </div>
 
           <div className="flex gap-3">
-            <Button className="bg-green-600 hover:bg-green-700 text-white">
+            <Button
+              onClick={() => setStudentModalOpen(true)}
+              className="bg-green-600 hover:bg-green-700"
+            >
               <Plus className="mr-2 h-4 w-4" />
               Create Student
             </Button>
-            <Button className="bg-green-600 hover:bg-green-700 text-white">
+
+            <Button
+              onClick={() => setLecturerModalOpen(true)}
+              className="bg-green-600 hover:bg-green-700"
+            >
               <Plus className="mr-2 h-4 w-4" />
               Create Lecturer
             </Button>
@@ -91,9 +134,19 @@ export default function AdminDashboard() {
                     </TableCell>
                     <TableCell>{user.createdAt}</TableCell>
                     <TableCell className="text-right space-x-2">
-                      <Button variant="ghost" size="icon"><Eye className="h-4 w-4" /></Button>
-                      <Button variant="ghost" size="icon"><Edit className="h-4 w-4" /></Button>
-                      <Button variant="ghost" size="icon" className="text-red-600"><Trash2 className="h-4 w-4" /></Button>
+                      <Button variant="ghost" size="icon">
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                      <Button variant="ghost" size="icon">
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="text-red-600"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -102,6 +155,19 @@ export default function AdminDashboard() {
           </CardContent>
         </Card>
       </div>
+      <CreateUserModal
+        isOpen={studentModalOpen}
+        onClose={() => setStudentModalOpen(false)}
+        userType="student"
+        onSuccess={() => window.location.reload()} // Refresh to show new user
+      />
+
+      <CreateUserModal
+        isOpen={lecturerModalOpen}
+        onClose={() => setLecturerModalOpen(false)}
+        userType="lecturer"
+        onSuccess={() => window.location.reload()}
+      />
     </MainLayout>
   );
 }
