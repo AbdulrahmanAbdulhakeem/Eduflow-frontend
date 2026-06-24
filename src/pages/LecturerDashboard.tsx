@@ -1,22 +1,27 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
+import { useNavigate } from 'react-router';
 import MainLayout from '../components/layout/MainLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
 import { BookOpen, Users, Activity, Plus, Edit, Trash2 } from 'lucide-react';
 import { useCourseStore } from '../store/courseStore';
 import CreateCourseModal from '../components/modals/CreateCourseModal';
 import EditCourseModal from '../components/modals/EditCourseModal';
 import { toast } from 'sonner';
 import io from 'socket.io-client';
+import { Table,TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
 
 const socket = io('http://localhost:3000');
 
 export default function LecturerDashboard() {
+  const navigate = useNavigate();
+  
   const { 
     lecturerCourses, 
+    lecturerStudents,
     getLecturerCourses, 
+    getLecturerStudents,
     deleteCourse,
     isLoading 
   } = useCourseStore();
@@ -28,22 +33,12 @@ export default function LecturerDashboard() {
   const [liveStudents, setLiveStudents] = useState<any[]>([]);
   const [allEnrolledStudents, setAllEnrolledStudents] = useState<any[]>([]);
 
-  // Fetch courses and enrolled students
+
+  // Initial Data Fetch
   useEffect(() => {
     getLecturerCourses();
-    fetchEnrolledStudents();
-  }, [getLecturerCourses]);
-
-  const fetchEnrolledStudents = async () => {
-    try {
-      // This calls your backend endpoint for all students across lecturer's courses
-      const res = await fetch('/api/v1/course/mystudents'); // Adjust if needed
-      const data = await res.json();
-      setAllEnrolledStudents(data.data || data);
-    } catch (error) {
-      console.error("Failed to fetch enrolled students", error);
-    }
-  };
+    getLecturerStudents();
+  }, [getLecturerCourses,getLecturerStudents]);
 
   // WebSocket Real-time Presence
   useEffect(() => {
@@ -57,7 +52,9 @@ export default function LecturerDashboard() {
       setLiveStudents(students);
     });
 
-    return () => socket.off('presence:live_data');
+    return () => {
+      socket.off('presence:live_data');
+    };
   }, [selectedCourseId]);
 
   const handleSelectCourse = (courseId: string) => {
@@ -74,9 +71,14 @@ export default function LecturerDashboard() {
     try {
       await deleteCourse(id);
       toast.success("Course deleted successfully");
+      getLecturerCourses(); // Refresh list
     } catch (error) {
       toast.error("Failed to delete course");
     }
+  };
+
+  const handleViewCourse = (courseId: string) => {
+    navigate(`/lecturer/courses/${courseId}`);
   };
 
   return (
@@ -101,7 +103,9 @@ export default function LecturerDashboard() {
                 <CardTitle>My Courses ({lecturerCourses.length})</CardTitle>
               </CardHeader>
               <CardContent>
-                {lecturerCourses.length === 0 ? (
+                {isLoading ? (
+                  <p className="text-center py-12">Loading courses...</p>
+                ) : lecturerCourses.length === 0 ? (
                   <p className="text-center py-12 text-gray-500">No courses yet. Create one to begin.</p>
                 ) : (
                   <div className="space-y-4">
@@ -118,14 +122,28 @@ export default function LecturerDashboard() {
                           </div>
                           <Badge variant="outline">{course._count?.enrollments || 0} Students</Badge>
                         </div>
+
                         <p className="mt-3 text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
                           {course.description}
                         </p>
 
                         <div className="flex gap-3 mt-6">
+                          <Button 
+                            variant="default" 
+                            size="sm"
+                            onClick={(e) => { 
+                              e.stopPropagation(); 
+                              handleViewCourse(course.id); 
+                            }}
+                          >
+                            <BookOpen className="mr-2 h-4 w-4" />
+                            Manage Materials
+                          </Button>
+
                           <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); handleEditCourse(course); }}>
                             <Edit className="mr-2 h-4 w-4" /> Edit
                           </Button>
+
                           <Button variant="destructive" size="sm" onClick={(e) => { e.stopPropagation(); handleDeleteCourse(course.id, course.title); }}>
                             <Trash2 className="mr-2 h-4 w-4" /> Delete
                           </Button>
@@ -138,7 +156,7 @@ export default function LecturerDashboard() {
             </Card>
           </div>
 
-          {/* Live Students (Real-time) */}
+          {/* Live Students */}
           <div className="lg:col-span-5">
             <Card className="h-full">
               <CardHeader>
@@ -179,10 +197,10 @@ export default function LecturerDashboard() {
           </div>
         </div>
 
-        {/* All Enrolled Students - Below */}
+        {/* All Enrolled Students */}
         <Card className="mt-8">
           <CardHeader>
-            <CardTitle>All Enrolled Students ({allEnrolledStudents.length})</CardTitle>
+            <CardTitle>All Enrolled Students ({lecturerStudents.length})</CardTitle>
           </CardHeader>
           <CardContent>
             <Table>
@@ -195,12 +213,12 @@ export default function LecturerDashboard() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {allEnrolledStudents.map((enrollment, index) => (
+                {lecturerStudents.map((enrollment, index) => (
                   <TableRow key={index}>
-                    <TableCell className="font-medium">{enrollment.student.name}</TableCell>
-                    <TableCell>{enrollment.student.email}</TableCell>
+                    <TableCell className="font-medium">{enrollment?.student?.name}</TableCell>
+                    <TableCell>{enrollment?.student?.email}</TableCell>
                     <TableCell>
-                      <Badge variant="outline">{enrollment.course.code}</Badge>
+                      <Badge variant="outline">{enrollment?.course?.code}</Badge>
                     </TableCell>
                     <TableCell>{new Date(enrollment.enrolledAt).toLocaleDateString()}</TableCell>
                   </TableRow>

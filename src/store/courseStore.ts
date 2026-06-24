@@ -27,16 +27,30 @@ type Course = {
   createdAt: string;
 };
 
+type EnrolledStudent = {
+  student: {
+    id: string;
+    name: string;
+    email: string;
+  };
+  course: {
+    id: string;
+    code: string;
+    title: string;
+  };
+  enrolledAt: string;
+};
+
 interface CourseState {
-  courses: Course[];
+  courses: Course[]; // All courses (for students)
   lecturerCourses: Course[];
+  lecturerStudents: EnrolledStudent[];
   currentCourse: Course | null;
   isLoading: boolean;
   error: string | null;
 
-  // All required actions
-  getCourses: () => Promise<void>; // For students (all available)
-  getLecturerCourses: () => Promise<void>;
+  getCourses: () => Promise<void>; // For students
+  getLecturerCourses: () => Promise<void>; // For lecturers
   getCourseById: (id: string) => Promise<void>;
   createCourse: (data: any) => Promise<void>;
   updateCourse: (id: string, data: any) => Promise<void>;
@@ -54,6 +68,7 @@ export const useCourseStore = create<CourseState>()(
   immer((set) => ({
     courses: [],
     lecturerCourses: [],
+    lecturerStudents: [],
     currentCourse: null,
     isLoading: false,
     error: null,
@@ -88,23 +103,31 @@ export const useCourseStore = create<CourseState>()(
         set((state) => {
           state.lecturerCourses = res.data.data || res.data;
         });
-      } catch (error) {
-        console.error(error);
+      } catch (error: any) {
+        set((state) => {
+          state.error =
+            error.response?.data?.error || "Failed to fetch your courses";
+        });
       } finally {
         set((state) => {
           state.isLoading = false;
         });
       }
     },
-    
+
     getLecturerStudents: async () => {
+      set((state) => { state.isLoading = true; });
       try {
         const res = await api.get("/api/v1/course/mystudents");
-        // You can store this in a separate state if needed, or just return it
-        return res.data.data || res.data;
-      } catch (error) {
-        console.error("Failed to fetch lecturer students", error);
-        return [];
+        set((state) => {
+          state.lecturerStudents = res.data.data || res.data;
+        });
+      } catch (error: any) {
+        set((state) => {
+          state.error = error.response?.data?.error || "Failed to fetch students";
+        });
+      } finally {
+        set((state) => { state.isLoading = false; });
       }
     },
 

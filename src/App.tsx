@@ -1,16 +1,20 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router';
-import { useAuthStore } from './store/authStore';
-import Login from './pages/Login';
-import { ROLES } from './constants';
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router";
+import { useAuthStore } from "./store/authStore";
+import Login from "./pages/Login";
+import { ROLES } from "./constants";
 
 // Simple Dashboard Pages
-import AdminDashboard from './pages/AdminDashboard';
-import StudentDashboard from './pages/StudentDashboard';
-import LecturerDashboard from './pages/LecturerDashboard';
+import AdminDashboard from "./pages/AdminDashboard";
+import StudentDashboard from "./pages/StudentDashboard";
+import LecturerDashboard from "./pages/LecturerDashboard";
+import CourseDetail from "./pages/lecturer/CourseDetail";
 
-function ProtectedRoute({ children, allowedRoles }: { 
-  children: React.ReactNode; 
-  allowedRoles: string[] 
+function ProtectedRoute({
+  children,
+  allowedRoles,
+}: {
+  children: React.ReactNode;
+  allowedRoles: string[];
 }) {
   const { user, isAuthenticated } = useAuthStore();
 
@@ -66,6 +70,15 @@ function App() {
           element={
             <ProtectedRoute allowedRoles={[ROLES.LECTURER]}>
               <LecturerDashboard />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/lecturer/courses/:courseId"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.LECTURER]}>
+              <CourseDetail />
             </ProtectedRoute>
           }
         />
