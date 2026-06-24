@@ -8,6 +8,7 @@ import AdminDashboard from "./pages/AdminDashboard";
 import StudentDashboard from "./pages/StudentDashboard";
 import LecturerDashboard from "./pages/LecturerDashboard";
 import CourseDetail from "./pages/lecturer/CourseDetail";
+import StudentCourseDetail from "./pages/student/StudentCourseDetail";
 
 function ProtectedRoute({
   children,
@@ -88,6 +89,14 @@ function App() {
           element={
             <ProtectedRoute allowedRoles={[ROLES.STUDENT]}>
               <StudentDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/student/courses/:courseId"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.STUDENT]}>
+              <StudentCourseDetail />
             </ProtectedRoute>
           }
         />
