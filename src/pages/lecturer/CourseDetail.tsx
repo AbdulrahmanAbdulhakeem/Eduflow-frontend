@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/ca
 import { Button } from '../../components/ui/button';
 import { useCourseStore } from '../../store/courseStore';
 import { useMaterialStore } from '../../store/materialStore';
-import { Upload, Trash2, ArrowLeft, Loader2, FileText } from 'lucide-react';
+import { Upload, Trash2, ArrowLeft, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 

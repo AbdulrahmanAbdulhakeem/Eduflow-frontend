@@ -2,13 +2,15 @@ import { useAuthStore } from '../../store/authStore';
 import { Button } from '../ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { LogOut } from 'lucide-react';
+import { useNavigate } from 'react-router';
 
 export default function Navbar() {
   const { user, logout } = useAuthStore();
+  const navigate = useNavigate()
 
   const handleLogout = () => {
     logout();
-    window.location.href = '/login';
+    navigate("/login")
   };
 
   return (
