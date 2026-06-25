@@ -9,6 +9,7 @@ import StudentDashboard from "./pages/StudentDashboard";
 import LecturerDashboard from "./pages/LecturerDashboard";
 import CourseDetail from "./pages/lecturer/CourseDetail";
 import StudentCourseDetail from "./pages/student/StudentCourseDetail";
+import StudyArena from "./pages/student/StudyArena";
 
 function ProtectedRoute({
   children,
@@ -97,6 +98,14 @@ function App() {
           element={
             <ProtectedRoute allowedRoles={[ROLES.STUDENT]}>
               <StudentCourseDetail />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/student/study/:courseId"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.STUDENT]}>
+              <StudyArena />
             </ProtectedRoute>
           }
         />

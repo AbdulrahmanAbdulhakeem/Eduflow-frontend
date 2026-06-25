@@ -1,21 +1,26 @@
-import { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router';
-import MainLayout from '../../components/layout/MainLayout';
-import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
-import { Button } from '../../components/ui/button';
-import { Badge } from '../../components/ui/badge';
-import { ArrowLeft, BookOpen, Play, Loader2 } from 'lucide-react';
-import { useCourseStore } from '../../store/courseStore';
-import { toast } from 'sonner';
+import { useEffect, useState } from "react";
+import { useParams, useNavigate } from "react-router";
+import MainLayout from "../../components/layout/MainLayout";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "../../components/ui/card";
+import { Button } from "../../components/ui/button";
+import { Badge } from "../../components/ui/badge";
+import { ArrowLeft, BookOpen, Play, Loader2 } from "lucide-react";
+import { useCourseStore } from "../../store/courseStore";
+import { toast } from "sonner";
+import socket from "@/lib/socket";
+import { useAuthStore } from "@/store/authStore";
 
 export default function StudentCourseDetail() {
   const { courseId } = useParams<{ courseId: string }>();
   const navigate = useNavigate();
+  const { user } = useAuthStore();
 
-  const { 
-    currentCourse, 
-    getCourseById, 
-  } = useCourseStore();
+  const { currentCourse, getCourseById } = useCourseStore();
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -25,7 +30,7 @@ export default function StudentCourseDetail() {
       if (!courseId) return;
       setLoading(true);
       setError(null);
-      
+
       try {
         await getCourseById(courseId);
       } catch (err: any) {
@@ -34,13 +39,36 @@ export default function StudentCourseDetail() {
         setLoading(false);
       }
     };
-    console.log(currentCourse)
+    console.log(currentCourse);
 
     fetchCourse();
   }, [courseId, getCourseById]);
 
-  const isEnrolled = currentCourse?.enrollmentStatus === "ENROLLED" || 
-                     currentCourse?.enrollments?.length > 0;
+  useEffect(() => {
+    if (courseId && user) {
+      socket.emit('presence:initialize', {
+        studentId: user.id,
+        name: user.name,
+        email: user.email,
+        courseId,
+      });
+    }
+  }, [courseId, user]);
+
+  useEffect(() => {
+    return () => {
+      if (courseId) {
+        socket.emit('presence:update_action', {
+          courseId,
+          action: "Left Course page"
+        });
+      }
+    };
+  }, [courseId]);
+
+  const isEnrolled =
+    currentCourse?.enrollmentStatus === "ENROLLED" ||
+    currentCourse?.enrollments?.length > 0;
 
   const handleStudyNow = () => {
     if (!isEnrolled) {
@@ -71,9 +99,13 @@ export default function StudentCourseDetail() {
     return (
       <MainLayout>
         <div className="max-w-md mx-auto mt-20 text-center">
-          <h2 className="text-2xl font-semibold text-red-600">Course Not Found</h2>
-          <p className="text-gray-600 mt-4">{error || "This course may not exist or you don't have access."}</p>
-          <Button onClick={() => navigate('/student')} className="mt-6">
+          <h2 className="text-2xl font-semibold text-red-600">
+            Course Not Found
+          </h2>
+          <p className="text-gray-600 mt-4">
+            {error || "This course may not exist or you don't have access."}
+          </p>
+          <Button onClick={() => navigate("/student")} className="mt-6">
             Back to Dashboard
           </Button>
         </div>
@@ -84,9 +116,9 @@ export default function StudentCourseDetail() {
   return (
     <MainLayout>
       <div className="max-w-5xl mx-auto">
-        <Button 
-          variant="ghost" 
-          onClick={() => navigate('/student')} 
+        <Button
+          variant="ghost"
+          onClick={() => navigate("/student")}
           className="mb-6"
         >
           <ArrowLeft className="mr-2 h-4 w-4" /> Back to Dashboard
@@ -105,7 +137,9 @@ export default function StudentCourseDetail() {
 
         {currentCourse.description && (
           <Card className="mb-8">
-            <CardHeader><CardTitle>Description</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle>Description</CardTitle>
+            </CardHeader>
             <CardContent>
               <p className="leading-relaxed text-gray-700 dark:text-gray-300">
                 {currentCourse.description}
@@ -120,7 +154,9 @@ export default function StudentCourseDetail() {
           </CardHeader>
           <CardContent className="text-center py-16">
             <BookOpen className="mx-auto h-20 w-20 text-green-600 mb-6" />
-            <h3 className="text-2xl font-semibold mb-3">Ready to Start Learning?</h3>
+            <h3 className="text-2xl font-semibold mb-3">
+              Ready to Start Learning?
+            </h3>
             <p className="text-gray-500 mb-10 max-w-md mx-auto">
               Access all materials and use the AI assistant while studying.
             </p>
@@ -128,7 +164,11 @@ export default function StudentCourseDetail() {
             <div className="flex gap-4 justify-center">
               {isEnrolled && (
                 <>
-                  <Button size="lg" onClick={handleStudyNow} className="bg-green-600 hover:bg-green-700">
+                  <Button
+                    size="lg"
+                    onClick={handleStudyNow}
+                    className="bg-green-600 hover:bg-green-700"
+                  >
                     <Play className="mr-3 h-5 w-5" />
                     Open Study Arena
                   </Button>

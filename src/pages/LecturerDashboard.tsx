@@ -1,16 +1,16 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 import MainLayout from '../components/layout/MainLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
-import { BookOpen, Users, Activity, Plus, Edit, Trash2 } from 'lucide-react';
+import { BookOpen, Activity, Plus, Edit, Trash2 } from 'lucide-react';
 import { useCourseStore } from '../store/courseStore';
 import CreateCourseModal from '../components/modals/CreateCourseModal';
 import EditCourseModal from '../components/modals/EditCourseModal';
 import { toast } from 'sonner';
 import io from 'socket.io-client';
-import { Table,TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
+import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
 
 const socket = io('http://localhost:3000');
 
@@ -31,25 +31,26 @@ export default function LecturerDashboard() {
   const [selectedCourse, setSelectedCourse] = useState<any>(null);
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
   const [liveStudents, setLiveStudents] = useState<any[]>([]);
-  const [allEnrolledStudents, setAllEnrolledStudents] = useState<any[]>([]);
-
 
   // Initial Data Fetch
   useEffect(() => {
     getLecturerCourses();
     getLecturerStudents();
-  }, [getLecturerCourses,getLecturerStudents]);
+  }, [getLecturerCourses, getLecturerStudents]);
 
-  // WebSocket Real-time Presence
+  // WebSocket Real-time Student Activity
   useEffect(() => {
-    socket.on('connect', () => console.log('Connected to Live Students'));
+    socket.on('connect', () => console.log('✅ Connected to Live Students'));
 
+    // Join lecturer monitoring room when course is selected
     if (selectedCourseId) {
       socket.emit('lecturer:join', selectedCourseId);
     }
 
+    // Listen for live updates
     socket.on('presence:live_data', (students) => {
-      setLiveStudents(students);
+      console.log('📡 Live students received:', students);
+      setLiveStudents(students || []);
     });
 
     return () => {
@@ -71,7 +72,7 @@ export default function LecturerDashboard() {
     try {
       await deleteCourse(id);
       toast.success("Course deleted successfully");
-      getLecturerCourses(); // Refresh list
+      getLecturerCourses();
     } catch (error) {
       toast.error("Failed to delete course");
     }
@@ -110,7 +111,7 @@ export default function LecturerDashboard() {
                 ) : (
                   <div className="space-y-4">
                     {lecturerCourses.map((course) => (
-                      <div 
+                      <div
                         key={course.id}
                         className={`p-6 border rounded-2xl cursor-pointer transition-all hover:border-green-300 ${selectedCourseId === course.id ? 'border-green-500 bg-green-50 dark:bg-green-950' : ''}`}
                         onClick={() => handleSelectCourse(course.id)}
@@ -128,13 +129,10 @@ export default function LecturerDashboard() {
                         </p>
 
                         <div className="flex gap-3 mt-6">
-                          <Button 
-                            variant="default" 
+                          <Button
+                            variant="default"
                             size="sm"
-                            onClick={(e) => { 
-                              e.stopPropagation(); 
-                              handleViewCourse(course.id); 
-                            }}
+                            onClick={(e) => { e.stopPropagation(); handleViewCourse(course.id); }}
                           >
                             <BookOpen className="mr-2 h-4 w-4" />
                             Manage Materials
@@ -156,7 +154,7 @@ export default function LecturerDashboard() {
             </Card>
           </div>
 
-          {/* Live Students */}
+          {/* Live Students - Real-time Activity */}
           <div className="lg:col-span-5">
             <Card className="h-full">
               <CardHeader>
@@ -170,7 +168,9 @@ export default function LecturerDashboard() {
               </CardHeader>
               <CardContent>
                 {liveStudents.length === 0 ? (
-                  <p className="text-center py-20 text-gray-500">No students currently active</p>
+                  <p className="text-center py-20 text-gray-500">
+                    {selectedCourseId ? "No students currently active" : "Select a course on the left to see live activity"}
+                  </p>
                 ) : (
                   <div className="space-y-4 max-h-[500px] overflow-y-auto">
                     {liveStudents.map((student, i) => (
@@ -186,7 +186,9 @@ export default function LecturerDashboard() {
                         </div>
                         <div className="text-right text-sm">
                           <p className="text-green-600 font-medium">{student.currentAction}</p>
-                          {student.materialTitle && <p className="text-gray-400 text-xs">{student.materialTitle}</p>}
+                          {student.materialTitle && (
+                            <p className="text-gray-400 text-xs mt-1">{student.materialTitle}</p>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -197,7 +199,7 @@ export default function LecturerDashboard() {
           </div>
         </div>
 
-        {/* All Enrolled Students */}
+        {/* All Enrolled Students Table */}
         <Card className="mt-8">
           <CardHeader>
             <CardTitle>All Enrolled Students ({lecturerStudents.length})</CardTitle>
